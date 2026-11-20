@@ -1,6 +1,11 @@
 package io.github.gobi12b.cookbook.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.res.painterResource
+import io.github.gobi12b.cookbook.R
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -139,8 +144,12 @@ fun RecipesScreen(
                             size = 14.sp, weight = FontWeight.Medium, color = C.TextDim,
                         )
                     }
-                    Sticker("🍳", 54.dp, rotation = 12f, fill = C.Sun,
-                        modifier = Modifier.align(Alignment.CenterEnd).padding(end = 60.dp, top = 8.dp).bob(5.dp, 8f, 2600))
+                    // The app's pot mascot as a bobbing badge.
+                    Box(Modifier.align(Alignment.CenterEnd).padding(end = 60.dp, top = 8.dp).bob(5.dp, 8f, 2600).rotate(10f)) {
+                        Chunky(Modifier.size(66.dp), shape = CircleShape, fill = C.Sun, shadow = 3.dp, contentAlignment = Alignment.Center) {
+                            Image(painterResource(R.drawable.logo_mark), contentDescription = null, modifier = Modifier.size(52.dp))
+                        }
+                    }
                     Box(Modifier.align(Alignment.TopEnd)) {
                         CircleBtn(Icons.More, "More options") { topMenu = true }
                         DropdownMenu(topMenu, { topMenu = false }, containerColor = C.Card, shape = RoundedCornerShape(18.dp)) {
