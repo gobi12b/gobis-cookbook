@@ -6,10 +6,11 @@ on:
   pull_request:
   workflow_dispatch:
 
-# A newer push to the same branch/PR cancels the older run.
+# A newer push to the same PR cancels the older run. Runs on main are never cancelled mid-flight,
+# so a release tag never ends up without its APK.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -22,6 +23,8 @@ jobs:
     name: Build signed APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write # create the GitHub release on main
     steps:
       - uses: actions/checkout@v5
 
@@ -80,9 +83,11 @@ jobs:
         id: name
         run: |
           version_name=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts)
-          apk="GobisCookbook-v${version_name}-build.${GITHUB_RUN_NUMBER}.apk"
+          tag="v${version_name}-build.${GITHUB_RUN_NUMBER}"
+          apk="GobisCookbook-${tag}.apk"
           cp app/build/outputs/apk/release/app-release*.apk "$apk"
           sha256sum "$apk" > "$apk.sha256"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "apk=$apk" >> "$GITHUB_OUTPUT"
 
       - name: Upload signed release APK
@@ -99,6 +104,18 @@ jobs:
         with:
           name: gobis-cookbook-debug
           path: app/build/outputs/apk/debug/*.apk
+
+      # Every signed build from main becomes a GitHub release with the APK attached.
+      - name: Publish GitHub release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.signing.outputs.signed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.name.outputs.tag }}" \
+            "${{ steps.name.outputs.apk }}" "${{ steps.name.outputs.apk }}.sha256" \
+            --target "$GITHUB_SHA" \
+            --title "Gobi's Cookbook ${{ steps.name.outputs.tag }}" \
+            --generate-notes
 
       - name: Remove signing material
         if: always()
